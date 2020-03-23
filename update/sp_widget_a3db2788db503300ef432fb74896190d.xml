@@ -4,60 +4,78 @@
         <client_script><![CDATA[function($http) {
 	/* widget controller */
 	var b = this;
-	
+
 	//Using server.update()
-	b.updateincwu= (function(){
+	b.updateincwu= function(){
+		b.data.isLoading = true;
 		b.data.action = "updateinc";
 		b.data.sd = "Updated by server.update";
 		b.server.update().then(function (r) {
+			b.data.isLoading = false;
 			b.data.action = undefined;
 		});
-	});
-	
+	};
+
 	//Using server.get
 	// Use server.get to define a spesific input.
-	b.updateincwg= (function(){
+	b.updateincwg= function(){
+		b.data.isLoading = true;
 		var input = {
 			"action":"updateinc",
 			"sd":"Updated by server.get"
 		};
 		b.server.get(input).then(function (r) {
+			b.data.items = r.data.items; 
 			b.data.action = undefined;
+			b.data.isLoading = false;
 		});
-	});
-	
+	};
+
 	//Using Rest 1
-	b.updateincwr1= (function(){
-		var data = {
-			"short_description":"Updated using a REST call 1."
-		};
-		$http.put("/api/now/table/incident/57af7aec73d423002728660c4cf6a71c",data).then(function (r) {
+	b.updateincwr1= function(){
+		b.data.isLoading = true;
+		var payload = {
+			params: {
+				"sysparm_limit" : "3",
+				"sysparm_display_value":"all",
+				"sysparm_fields":"number,short_description,priority"
+			},
+			headers : {'Accept' : 'application/json'}};
+		$http.get("/api/now/table/incident", payload).then(function (r) {
+			b.data.items = r.data.result;
+			b.data.isLoading = false;
 		});
-	});
-	
+	};
+
 	//Using Rest 2
-	b.updateincwr2= (function(){
-		var data = {
-			"short_description":"Updated using a REST call 2."
-		};
+	b.updateincwr2= function(){
+		b.data.isLoading = true;
+		var qparams = {
+				"sysparm_limit" : "5",
+				"sysparm_display_value":"all",
+				"sysparm_fields":"number,short_description,priority"
+			};
 		$http({
-			method:"PUT",
-			url:"/api/now/table/incident/57af7aec73d423002728660c4cf6a71c",
-			data:data,
-			headers:{'Content-Type': 'application/json,charset=utf-8'}
+			method:"GET",
+			url:"/api/now/table/incident",
+			params:qparams,
+			headers:{'Content-Type': 'application/json,charset=utf-8', 'Accept': 'application/json'}
 		}).then(function (r) {
+			b.data.items = r.data.result;
+			b.data.isLoading = false;
 		});
-	});
-	
+	};
+
 	//Using Service
 	b.updateincws= (function(){
+		b.data.isLoading = true;
 		b.data.action = "updateinc";
 		b.server.update().then(function (r) {
 			b.data.action = undefined;
 			alert("Updated using a service.");
 		});
 	});
-	
+
 }]]></client_script>
         <controller_as>b</controller_as>
         <css/>
@@ -76,16 +94,24 @@
         <roles/>
         <script><![CDATA[(function() {
 	/* populate the 'data' object */
-	/* e.g., data.table = $sp.getValue('table'); */
-	if(input){
-		if(input.action == "updateinc"){
-			var grInc = new GlideRecord("incident");
-			if(grInc.get("57af7aec73d423002728660c4cf6a71c")){
-				grInc.setValue("short_description", input.sd);
-				grInc.update();	
-			}	
+	data.fields = 'number,short_description, priority';
+
+	if(input && input.action == "updateinc"){
+		data.items = getItems();
+	}
+
+	function getItems(){
+		var items = [];
+		var incidentGR = new GlideRecord('incident');
+		incidentGR.setLimit(10);
+		incidentGR.query();
+
+		while(incidentGR.next()){
+			var obj= {};
+			$sp.getRecordElements(obj, incidentGR, data.fields);
+			items.push(obj);
 		}
-		
+		return items;
 	}
 })();]]></script>
         <servicenow>false</servicenow>
@@ -93,20 +119,59 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2019-03-15 18:13:31</sys_created_on>
         <sys_id>a3db2788db503300ef432fb74896190d</sys_id>
-        <sys_mod_count>26</sys_mod_count>
+        <sys_mod_count>94</sys_mod_count>
         <sys_name>ServerUpdate</sys_name>
         <sys_package display_value="Sp Examples" source="x_7725_sp_examples">49faa388db503300ef432fb748961938</sys_package>
         <sys_policy/>
         <sys_scope display_value="Sp Examples">49faa388db503300ef432fb748961938</sys_scope>
         <sys_update_name>sp_widget_a3db2788db503300ef432fb74896190d</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2019-03-15 21:42:18</sys_updated_on>
-        <template><![CDATA[<div>
+        <sys_updated_on>2020-03-23 05:30:44</sys_updated_on>
+        <template><![CDATA[<div class="itg-interview-widget">
+  <!-- INTERVIEW: List of Incidents -->
+
+  <!-- TODO: Show list of incidents - Limit result to 10 records -->
+
+  <!--  BONUS EXERCISES  -->
+  <!--  BONUS 1: Add Filter to Table -->
+  <!--  BONUS 2: Add Sorting to Table -->
+  <!--  BONUS 3: Have Number sorted by decending order onload -->
+
+
+ <table class="table table-striped itg-table">
+    <tr class="itg-table-row">
+      <th class="itg-table-header">Number</th>
+      <th class="itg-table-header">Short Description</th>
+      <th class="itg-table-header">Priority</th>
+    </tr>   	
+    <tr class="itg-table-row" ng-repeat="item in data.items">
+			<td class="itg-table-cell">{{item.number.display_value}}</td>
+      <td class="itg-table-cell">{{item.short_description.display_value}}</td>
+      <td class="itg-table-cell">{{item.priority.display_value}}</td>
+    </tr> 
+  </table> 
+
+
+  <p class="itg-paragraph">
+    <button class="btn btn-primary" ng-click="b.updateincwu()">
+      <i class="fa fa-check" ng-if="data.isLoading == false" aria-hidden="true"></i>
+      <i class="fa fa-spinner" ng-if="data.isLoading == true" aria-hidden="true"></i>
+      Get Incidents
+    </button>
+  </p>
+  <div>
   <button type="button" ng-click="b.updateincwu()" class="btn btn-primary">server.update</button>
   <button type="button" ng-click="b.updateincwg()" class="btn btn-primary">server.get</button>
   <button type="button" ng-click="b.updateincwr1()" class="btn btn-primary">restCall1</button>
   <button type="button" ng-click="b.updateincwr2()" class="btn btn-primary">restCall2</button>
   <button type="button" ng-click="b.updateincws()" class="btn btn-primary">service</button>
-</div>]]></template>
+</div>
+
+  <br/>
+
+</div>
+
+
+]]></template>
     </sp_widget>
 </record_update>
